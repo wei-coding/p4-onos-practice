@@ -1,7 +1,7 @@
 # Next-Gen SDN Tutorial (Advanced)
 
 ！！
-**由[opennetworkinglab/ngsdn-tutorial](https://github.com/opennetworkinglab/ngsdn-tutorial/)加上自己的練習而來，甕要取得檔案請直接以官方的為準**
+**由[opennetworkinglab/ngsdn-tutorial](https://github.com/opennetworkinglab/ngsdn-tutorial/)加上自己的練習而來，若要取得檔案請直接以官方的為準**
 ！！
 
 Welcome to the Next-Gen SDN tutorial!
