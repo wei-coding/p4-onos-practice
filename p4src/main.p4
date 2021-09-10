@@ -446,6 +446,67 @@ control IngressPipeImpl (inout parsed_headers_t    hdr,
     // You can name your tables whatever you like. You will need to fill
     // the name in elsewhere in this exercise.
 
+    // ***1. 
+    action ndp_ns_to_na(mac_addr_t target_mac) {
+        hdr.ethernet.src_addr = target_mac;
+        hdr.ethernet.dst_addr = IPV6_MCAST_01;
+        ipv6_addr_t host_ipv6_tmp = hdr.ipv6.src_addr;
+        hdr.ipv6.src_addr = hdr.ndp.target_ipv6_addr;
+        hdr.ipv6.dst_addr = host_ipv6_tmp;
+        hdr.ipv6.next_hdr = IP_PROTO_ICMPV6;
+        hdr.icmpv6.type = ICMP6_TYPE_NA;
+        hdr.ndp.flags = NDP_FLAG_ROUTER | NDP_FLAG_OVERRIDE;
+        hdr.ndp.type = NDP_OPT_TARGET_LL_ADDR;
+        hdr.ndp.length = 1;
+        hdr.ndp.target_mac_addr = target_mac;
+        standard_metadata.egress_spec = standard_metadata.ingress_port;
+    }
+    table ndp_reply_table {
+        key = {
+            hdr.ndp.target_ipv6_addr: exact;
+        }
+        actions = {
+            ndp_ns_to_na;
+            NoAction;
+        }
+        default_action = NoAction();
+    }
+
+    // ***2.
+    table my_station_table {
+        key = {
+            hdr.ethernet.dst_addr: exact;
+        }
+        actions = {
+            NoAction;
+        }
+    }
+
+    // ***3.
+    action_selector(HashAlgorithm.crc16, 32w1024, 32w16) ecmp_selector;
+
+    action set_next_hop(mac_addr_t dmac) {
+        hdr.ethernet.src_addr = hdr.ethernet.dst_addr;
+        hdr.ethernet.dst_addr = dmac;
+        hdr.ipv6.hop_limit = hdr.ipv6.hop_limit - 1;
+    }
+    table ipv6_routing_table {
+        key = {
+            hdr.ipv6.dst_addr: lpm;
+
+            hdr.ipv6.dst_addr: selector;
+            hdr.ipv6.src_addr: selector;
+            hdr.ipv6.flow_label: selector;
+
+            hdr.ipv6.next_hdr: selector;
+            local_metadata.l4_src_port: selector;
+            local_metadata.l4_dst_port: selector;
+        }
+        actions = {
+            set_next_hop;
+        }
+        implementation = ecmp_selector;
+    }
 
     // *** TODO EXERCISE 6 (SRV6)
     //
@@ -517,6 +578,9 @@ control IngressPipeImpl (inout parsed_headers_t    hdr,
             // If this is an NDP NS packet, i.e., if a matching entry is found,
             // unset the "do_l3_l2" flag to skip the L3 and L2 tables, as the
             // "ndp_ns_to_na" action already set an egress port.
+            if (ndp_reply_table.apply().hit) {
+                do_l3_l2 = false;
+            }
         }
 
         if (do_l3_l2) {
@@ -525,6 +589,12 @@ control IngressPipeImpl (inout parsed_headers_t    hdr,
             // Insert logic to match the My Station table and upon hit, the
             // routing table. You should also add a conditional to drop the
             // packet if the hop_limit reaches 0.
+            if (hdr.ipv6.isValid() && my_station_table.apply().hit) {
+                ipv6_routing_table.apply();
+                if (hdr.ipv6.hop_limit == 0) {
+                    drop();
+                }
+            }
 
             // *** TODO EXERCISE 6
             // Insert logic to match the SRv6 My SID and Transit tables as well
