@@ -470,6 +470,8 @@ control IngressPipeImpl (inout parsed_headers_t    hdr,
             NoAction;
         }
         default_action = NoAction();
+        @name("ndp_reply_table_counter")
+        counters = direct_counter(CounterType.packets_and_bytes);
     }
 
     // ***2.
@@ -480,6 +482,8 @@ control IngressPipeImpl (inout parsed_headers_t    hdr,
         actions = {
             NoAction;
         }
+        @name("my_station_table_counter")
+        counters = direct_counter(CounterType.packets_and_bytes);
     }
 
     // ***3.
@@ -506,6 +510,8 @@ control IngressPipeImpl (inout parsed_headers_t    hdr,
             set_next_hop;
         }
         implementation = ecmp_selector;
+        @name("ipv6_routing_table_counter")
+        counters = direct_counter(CounterType.packets_and_bytes);
     }
 
     // *** TODO EXERCISE 6 (SRV6)

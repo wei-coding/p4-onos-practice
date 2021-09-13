@@ -303,6 +303,8 @@ A: Understanding ONOS error logs** at the end of this exercise.
 
 #### Verify ping
 
+**Please run `make netcfg` first!!**
+
 Type the following commands in the Mininet CLI, in order:
 
 ```
